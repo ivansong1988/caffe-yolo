@@ -135,7 +135,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   CHECK_GT(float_size, 0) << 
     "Every sample must have label";
   CHECK_EQ(float_size % 6, 0) <<
-    "Every box label has 6 labels (class, difficult, box)";
+    "Every box label has 6 labels (class, difficult, box)"; //与convert_box_data.cpp写入lmdb的Datum一致
   vector<BoxLabel> ori_labels;
   for (int j = 0; j < float_size; j += 6) {
     BoxLabel box_label;
@@ -154,12 +154,12 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   cv::Mat cv_img;
   if (param_.force_color() || param_.force_gray()) {
   // If force_color then decode in color otherwise decode in gray.
-    cv_img = DecodeDatumToCVMat(datum, param_.force_color());
+    cv_img = DecodeDatumToCVMat(datum, param_.force_color());//force_color = ~force_gray, 没毛病
   } else {
     cv_img = DecodeDatumToCVMatNative(datum);
   }
 
-  if (phase_ == TEST) {
+  if (phase_ == TEST) {//继承自layer的参数, 标明了是在哪个阶段
     *box_labels = ori_labels;
     Transform(cv_img, transformed_blob);
     return;
