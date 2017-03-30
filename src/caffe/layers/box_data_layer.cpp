@@ -94,9 +94,10 @@ void BoxDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   top_shape[0] = batch_size;
   batch->data_.Reshape(top_shape);
 
-  Dtype* top_data = batch->data_.mutable_cpu_data();
+  Dtype* top_data = batch->data_.mutable_cpu_data();//同理, top_data指向batch中分配好的对应内存
   vector<Dtype*> top_label;
 
+  //预先将batch中的multi_label_数据指针存入top_label，后面将直接利用top_label对batch的对应内存区域进行操作
   if (this->output_labels_) {
     for (int i = 0; i < sides_.size(); ++i) {
       top_label.push_back(batch->multi_label_[i]->mutable_cpu_data());
@@ -105,21 +106,25 @@ void BoxDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   for (int item_id = 0; item_id < batch_size; ++item_id) {
     timer.Start();
     // get a datum
-    Datum& datum = *(reader_.full().pop("Waiting for data"));
+    Datum& datum = *(reader_.full().pop("Waiting for data"));//依次从reader_中取出样本(data+标注信息)
     read_time += timer.MicroSeconds();
     timer.Start();
     // Apply data transformations (mirror, scale, crop...)
-    int offset = batch->data_.offset(item_id);
+    int offset = batch->data_.offset(item_id);//默认是第一个参数指定num, 因此每次移动1个样本
     vector<BoxLabel> box_labels;
+
+    //此时top_data相当于batch的一个指示器, 现在将this->transformed_data_的cpu_ptr_指向top_data(batch)内存, 应该是基于共享内存的考虑(不用临时计算出来再拷贝)    
     this->transformed_data_.set_cpu_data(top_data + offset);
+
     if (this->output_labels_) {
       // rand sample a patch, adjust box labels
+      //Transform这个函数是专为目标检测(yolo)的label数据重载的, 具体目标检测的caffe代码该怎么改data_layer也可以同时参考faster-rcnn/ssd
       this->data_transformer_->Transform(datum, &(this->transformed_data_), &box_labels);
       // transform label
       for (int i = 0; i < sides_.size(); ++i) {
-        int label_offset = batch->multi_label_[i]->offset(item_id);
-        int count  = batch->multi_label_[i]->count(1);
-        transform_label(count, top_label[i] + label_offset, box_labels, sides_[i]);
+        int label_offset = batch->multi_label_[i]->offset(item_id);//默认是第一个参数指定num, 因此每次移动1个样本
+        int count  = batch->multi_label_[i]->count(1);//取出元素个数, multi_label_[i]的shape已经在DataLayerSetUp中设置过了
+        transform_label(count, top_label[i] + label_offset, box_labels, sides_[i]);//caffe-yolo
       }
     } else {
       this->data_transformer_->Transform(datum, &(this->transformed_data_));

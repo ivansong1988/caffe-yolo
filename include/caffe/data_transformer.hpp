@@ -9,11 +9,11 @@
 
 namespace caffe {
 
-class BoxLabel {
+class BoxLabel { //yolo, 这里实际上与convert_box_data里利用Datum忘lmdb是一致的, lmdb里存放的就是一条条Datum记录
  public:
-  float class_label_;
-  float difficult_;
-  float box_[4];
+  float class_label_; //类别标号, 0开始
+  float difficult_; //默认0
+  float box_[4];    //归一化坐标: cent_x, cent_y, w, h
 };
 
 

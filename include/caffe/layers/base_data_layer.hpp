@@ -50,7 +50,7 @@ template <typename Dtype>
 class Batch {
  public:
   Blob<Dtype> data_, label_;
-  // vector<Blob<Dtype> > multi_label_;
+  // vector<Blob<Dtype> > multi_label_;//for yolo
   vector<shared_ptr<Blob<Dtype> > > multi_label_;
 };
 

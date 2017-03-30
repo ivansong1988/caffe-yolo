@@ -127,7 +127,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   }
 }
 
-template<typename Dtype>
+template<typename Dtype>//yolo data transform from Datum to top Blob(s)
 void DataTransformer<Dtype>::Transform(const Datum& datum,
                                        Blob<Dtype>* transformed_blob,
                                        vector<BoxLabel>* box_labels) {
