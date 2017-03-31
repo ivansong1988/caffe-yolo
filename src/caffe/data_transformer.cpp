@@ -127,7 +127,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   }
 }
 
-template<typename Dtype>//yolo data transform from Datum to top Blob(s)
+template<typename Dtype>//caffe-yolo data transform from Datum to top Blob(s)
 void DataTransformer<Dtype>::Transform(const Datum& datum,
                                        Blob<Dtype>* transformed_blob,
                                        vector<BoxLabel>* box_labels) {
@@ -160,7 +160,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   }
 
   if (phase_ == TEST) {//继承自layer的参数, 标明了是在哪个阶段
-    *box_labels = ori_labels;
+    *box_labels = ori_labels; //测试阶段应该不会Crop吧，但代码中似乎有，对于函数中的Crop操作需要进一步分析
     Transform(cv_img, transformed_blob);
     return;
   }
@@ -171,7 +171,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
   cv::Mat cv_rand_img;
   // bool mirror = Rand(2);
   bool mirror = 0;
-  while (box_labels->size() == 0) {
+  while (box_labels->size() == 0) {//说明bbox为空的图片不能作为训练样本, 会导致无限次
     float rand_scale = (1. - Rand(30) / 100.);
     int rand_w = static_cast<int>(img_width * rand_scale) - 1;
     int rand_h = static_cast<int>(img_height * rand_scale) - 1;
@@ -218,13 +218,14 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       cv::Rect roi(rand_x, rand_y, rand_w, rand_h); 
       cv_rand_img = cv_img(roi);
       if (mirror) {
-        cv::flip(cv_rand_img, cv_rand_img, 1); // horizen flip
+        cv::flip(cv_rand_img, cv_rand_img, 1); // horizen flip //存的是归一化的中心点+宽高, 直接翻转就OK了
       }
     }
   }
-  cv::resize(cv_rand_img, cv_rand_img, cv::Size(img_width, img_height));
+  //由于caffe-yolo固定输入大小，Crop后需要恢复
+  cv::resize(cv_rand_img, cv_rand_img, cv::Size(img_width, img_height)); //存的是归一化的中心点+宽高, 直接翻转就OK了
   // Transform the cv::image into blob.
-  Transform(cv_rand_img, transformed_blob);
+  Transform(cv_rand_img, transformed_blob); //这里执行标准的Transform, 由于yolo的box_data_layer是不crop和mirro的，因此不需要再对bboxes做处理
   return;
 }
 
