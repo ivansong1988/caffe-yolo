@@ -56,11 +56,11 @@ void BoxDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     CHECK_EQ(sides_.size(), top.size() - 1) << 
       "side num not equal to top size";
     for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
-      this->prefetch_[i].multi_label_.clear(); 
+      this->prefetch_[i].multi_label_.clear(); //prefetch_是队列数据的实际存放空间, Forward时直接将数据从队列中copy到top, 因此在这里与top一并做Reshape
     }
     for (int i = 0; i < sides_.size(); ++i) {
       vector<int> label_shape(1, batch_size);
-      int label_size = sides_[i] * sides_[i] * (1 + 1 + 1 + 4);
+      int label_size = sides_[i] * sides_[i] * (1 + 1 + 1 + 4);//这里的1+1+1为每个location的"difficult", 'isobj', 'class_label'
       label_shape.push_back(label_size);
       top[i+1]->Reshape(label_shape);
       for (int j = 0; j < this->PREFETCH_COUNT; ++j) {
@@ -74,7 +74,7 @@ void BoxDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
 
 // This function is called on prefetch thread
 template<typename Dtype>
-void BoxDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
+void BoxDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {//给数据读取线程调用，往队列prefetch_full_中填入数据
   CPUTimer batch_timer;
   batch_timer.Start();
   double read_time = 0;
@@ -147,7 +147,7 @@ void BoxDataLayer<Dtype>::transform_label(int count, Dtype* top_label,
   CHECK_EQ(count, locations * 7) <<
     "side and count not match";
   // difficult
-  caffe_set(locations, Dtype(0), top_label);
+  caffe_set(locations, Dtype(0), top_label);//每个location存储1+1+1+4, 依次排列
   // isobj
   caffe_set(locations, Dtype(0), top_label + locations);
   // class label
@@ -164,9 +164,9 @@ void BoxDataLayer<Dtype>::transform_label(int count, Dtype* top_label,
     float x = box_labels[i].box_[0];
     float y = box_labels[i].box_[1];
     // LOG(INFO) << "x: " << x << " y: " << y;
-    int x_index = floor(x * side);
+    int x_index = floor(x * side);//判定中心点落入哪个Cell, 其实这里的实现就是要和算法的保持一致就OK
     int y_index = floor(y * side);
-    x_index = std::min(x_index, side - 1);
+    x_index = std::min(x_index, side - 1);//这里强制要求不能超过side - 1
     y_index = std::min(y_index, side - 1);
     int dif_index = side * y_index + x_index;
     int obj_index = locations + dif_index;

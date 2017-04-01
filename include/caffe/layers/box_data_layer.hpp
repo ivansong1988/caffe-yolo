@@ -33,8 +33,8 @@ class BoxDataLayer : public BasePrefetchingDataLayer<Dtype> {
  protected:
   virtual void load_batch(Batch<Dtype>* batch);
 
-  DataReader reader_;
-  vector<int> sides_;
+  DataReader reader_; //每个自定义DataLayer自己的成员变量
+  vector<int> sides_;  //这个参数其实还是没太弄明白
 };
 
 }  // namespace caffe

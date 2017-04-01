@@ -77,9 +77,9 @@ class BasePrefetchingDataLayer :
   virtual void InternalThreadEntry();
   virtual void load_batch(Batch<Dtype>* batch) = 0;
 
-  Batch<Dtype> prefetch_[PREFETCH_COUNT];
-  BlockingQueue<Batch<Dtype>*> prefetch_free_;
-  BlockingQueue<Batch<Dtype>*> prefetch_full_;
+  Batch<Dtype> prefetch_[PREFETCH_COUNT]; //实际的数据存储块池
+  BlockingQueue<Batch<Dtype>*> prefetch_free_; //记录存储池中可用的块
+  BlockingQueue<Batch<Dtype>*> prefetch_full_; //记录存储池中写入数据的块
 
   Blob<Dtype> transformed_data_;
 };
