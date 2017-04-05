@@ -30,7 +30,7 @@ void ReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     Dtype negative_slope = this->layer_param_.relu_param().negative_slope();
     for (int i = 0; i < count; ++i) {
       bottom_diff[i] = top_diff[i] * ((bottom_data[i] > 0)
-          + negative_slope * (bottom_data[i] <= 0));
+          + negative_slope * (bottom_data[i] <= 0)); // >0 原样复制， <0取negative_slope, 标准Relu negative_slope=0, bottom_diff = 0
     }
   }
 }

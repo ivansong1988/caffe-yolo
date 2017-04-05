@@ -51,7 +51,7 @@ void DetectionLossLayer<Dtype>::LayerSetUp(
   int input_count = bottom[0]->count(1);
   int label_count = bottom[1]->count(1);
   // outputs: classes, iou, coordinates
-  int tmp_input_count = side_ * side_ * (num_class_ + (1 + 4) * num_object_);
+  int tmp_input_count = side_ * side_ * (num_class_ + (1 + 4) * num_object_);//
   // label: isobj, class_label, coordinates
   int tmp_label_count = side_ * side_ * (1 + 1 + 1 + 4);
   CHECK_EQ(input_count, tmp_input_count);
@@ -65,6 +65,8 @@ void DetectionLossLayer<Dtype>::Reshape(
   diff_.ReshapeLike(*bottom[0]);
 }
 
+
+//Layer::SetUp调用LayerSetUp, Reshape以及SetLossWeights函数, 分别完成参数获取、设置与校验; 依据参数进行内存分配; 设置loss层的top的diff_初始值
 template <typename Dtype>
 void DetectionLossLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
@@ -76,14 +78,18 @@ void DetectionLossLayer<Dtype>::Forward_cpu(
   Dtype obj_count(0);
   int locations = pow(side_, 2);
   caffe_set(diff_.count(), Dtype(0.), diff);
-  for (int i = 0; i < bottom[0]->num(); ++i) {
+  for (int i = 0; i < bottom[0]->num(); ++i) {//batchsize * 1470 = batchsize * ((numC[20] + (1 + 4) * numB[2]) * 7 * 7), batch * channel * W * H, 
     int index = i * bottom[0]->count(1);
     int true_index = i * bottom[1]->count(1);
-    for (int j = 0; j < locations; ++j) {
+    for (int j = 0; j < locations; ++j) { //every location has the same neurons
       for (int k = 0; k < num_object_; ++k) {
-        int p_index = index + num_class_ * locations + k * locations + j;
-        noobj_loss += noobject_scale_ * pow(input_data[p_index] - 0, 2);
-        diff[p_index] = noobject_scale_ * (input_data[p_index] - 0);
+        //在这一层之前30维每一维的含义都不明确而只是一个feature map
+        int p_index = index + num_class_ * locations + k * locations + j; // batch * channel * W * H -> batch * 1470, 其实到这里每一维的含义由DetectionLossLayer层如何用来定义
+        //case 0: no ob in this cell, both are noobj, case 1: has obj in the cell, only the bestmatch box is the obj
+        //so for the most cell the two boxes are noobj
+        noobj_loss += noobject_scale_ * pow(input_data[p_index] - 0, 2); 
+        //最后一层是线性激活函数, a^L = z^L, 因此diff=dC/da
+        diff[p_index] = noobject_scale_ * (input_data[p_index] - 0);//dC/da_i, C(a_i) = l_{noobj}(C_i -C^p_i)^2
         avg_no_obj += input_data[p_index];
       }
       bool isobj = label_data[true_index + locations + j];
@@ -94,13 +100,13 @@ void DetectionLossLayer<Dtype>::Forward_cpu(
       int label = static_cast<int>(label_data[true_index + locations * 2 + j]);
       CHECK_GE(label, 0) << "label start at 0";
       CHECK_LT(label, num_class_) << "label must below num_class";
-      for (int c = 0; c < num_class_; ++c) {
-        int class_index = index + c * locations + j;
+      for (int c = 0; c < num_class_; ++c) { //从这里来看, 即使是二分类也没问题, 是每一类的于此累加, 并没有二值判断或归一化
+        int class_index = index + c * locations + j; //class prediction index
         Dtype target = Dtype(c == label);
         avg_cls += input_data[class_index];
         if (c == label)
           avg_pos_cls += input_data[class_index]; 
-        class_loss += class_scale_ * pow(input_data[class_index] - target, 2);
+        class_loss += class_scale_ * pow(input_data[class_index] - target, 2); //最小化loss
         diff[class_index] = class_scale_ * (input_data[class_index] - target);
       }
       const Dtype* true_box_pt = label_data + true_index + locations * 3 + j * 4;
@@ -141,12 +147,12 @@ void DetectionLossLayer<Dtype>::Forward_cpu(
       CHECK_GE(best_index, 0) << "best_index must >= 0";
       avg_iou += best_iou;
       int p_index = index + num_class_ * locations + best_index * locations + j;
-      noobj_loss -= noobject_scale_ * pow(input_data[p_index], 2);
+      noobj_loss -= noobject_scale_ * pow(input_data[p_index], 2); //匹配上的box, 它的loss要从总noobj loss中移除
       obj_loss += object_scale_ * pow(input_data[p_index] - 1., 2);
       avg_no_obj -= input_data[p_index];
       avg_obj += input_data[p_index];
       // rescore
-      diff[p_index] = object_scale_ * (input_data[p_index] - best_iou);
+      diff[p_index] = object_scale_ * (input_data[p_index] - best_iou); //匹配上obj的这个box, 梯度重新计算(C_i = {0, IOU})
       int box_index = index + (num_class_ + num_object_ + best_index * 4) * locations + j;
       vector<Dtype> best_box;
       best_box.push_back(input_data[box_index + 0 * locations]);
@@ -208,13 +214,17 @@ void DetectionLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }
   if (propagate_down[0]) {
     const Dtype sign(1.);
-    const Dtype alpha = sign * top[0]->cpu_diff()[0] / bottom[0]->num();
+    //注意, Caffe的内存管理由SyncedMem类管理, 是Blob的底层实现, Reshape操作只会调用SyncedMem的构造，
+    //设置size_大小, 不会进行内存分配, 只有在cpu_data/mutable_cpu_data获取指针时实际的分配(SyncedMem::to_cpu()/to_gpu判定状态机状态为"UNINITIALIZED"时会进行内存分配并初始化, 默认memset值为'0')
+    //cpu_diff最终会调用syncedMem->cpu_data在to_cpu函数中通过判定状态机为"UNINITIALIZED"而进行内存分配, 而这的触发在Layer的SetUp函数中，不仅调用了LayerSetUp/Reshape, 还调用了SetLossWeights
+    const Dtype alpha = sign * top[0]->cpu_diff()[0] / bottom[0]->num(); //top[0]->cpu_diff()[0]值为layer_param_.loss_weight()
+    
     caffe_cpu_axpby(
         bottom[0]->count(),
         alpha,
         diff_.cpu_data(),
         Dtype(0),
-        bottom[0]->mutable_cpu_diff());
+        bottom[0]->mutable_cpu_diff());//
   }
 }
 

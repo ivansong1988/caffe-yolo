@@ -33,8 +33,8 @@ void EuclideanLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   for (int i = 0; i < 2; ++i) {
     if (propagate_down[i]) {
-      const Dtype sign = (i == 0) ? 1 : -1;
-      const Dtype alpha = sign * top[0]->cpu_diff()[0] / bottom[i]->num();
+      const Dtype sign = (i == 0) ? 1 : -1;//diff = bottom[0]和bottom[1]的符号是相反的, dC/dy_p = y-y_p和dC/dy = y_p-y, 当然其实dC/dy是不需要计算的(data_layer不用反向)
+      const Dtype alpha = sign * top[0]->cpu_diff()[0] / bottom[i]->num();//Layer::SetUp函数中调用SetLossWeights将其设置为loss_weight(例如1)
       caffe_cpu_axpby(
           bottom[i]->count(),              // count
           alpha,                              // alpha
