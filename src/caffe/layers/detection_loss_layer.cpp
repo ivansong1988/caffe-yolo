@@ -122,7 +122,7 @@ void DetectionLossLayer<Dtype>::Forward_cpu(
         box.push_back(*(box_pt + (k * 4 + 2) * locations));
         box.push_back(*(box_pt + (k * 4 + 3) * locations));
         if (constriant_) {
-          box[0] = (j % side_ + box[0]) / side_;
+          box[0] = (j % side_ + box[0]) / side_; //限定cent在指定的cell内部
           box[1] = (j / side_ + box[1]) / side_;
         }
         if (sqrt_) {
