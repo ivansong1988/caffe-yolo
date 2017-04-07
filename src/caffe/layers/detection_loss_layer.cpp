@@ -115,7 +115,7 @@ void DetectionLossLayer<Dtype>::Forward_cpu(
       Dtype best_iou = 0.;
       Dtype best_rmse = 20.;
       int best_index = 0;
-      for (int k = 0; k < num_object_; ++k) {
+      for (int k = 0; k < num_object_; ++k) {//所以这里直接是估计的归一化图像中位置上的bbox, 
         vector<Dtype> box;
         box.push_back(*(box_pt + (k * 4 + 0) * locations));
         box.push_back(*(box_pt + (k * 4 + 1) * locations));

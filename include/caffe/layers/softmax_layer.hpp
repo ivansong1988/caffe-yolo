@@ -36,9 +36,15 @@ class SoftmaxLayer : public Layer<Dtype> {
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-  int outer_num_;
-  int inner_num_;
-  int softmax_axis_;
+  int outer_num_;///
+  int inner_num_;///
+
+  //caffe.proto
+  // The axis along which to perform the softmax -- may be negative to index
+  // from the end (e.g., -1 for the last axis).
+  // Any other axes will be evaluated as independent softmaxes.
+  // optional int32 axis = 2 [default = 1];
+  int softmax_axis_;///
   /// sum_multiplier is used to carry out sum using BLAS
   Blob<Dtype> sum_multiplier_;
   /// scale is an intermediate Blob to hold temporary results.
