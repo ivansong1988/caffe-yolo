@@ -30,7 +30,7 @@ void SoftmaxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   Dtype* top_data = top[0]->mutable_cpu_data();
   Dtype* scale_data = scale_.mutable_cpu_data();
   int channels = bottom[0]->shape(softmax_axis_);
-  int dim = bottom[0]->count() / outer_num_; //就是channel * w * H, 一般到softmax的每个节点都是标量 a_i = exp(z_i)
+  int dim = bottom[0]->count() / outer_num_; //就是channel * w * H, 一般到softmax的每个节点都是标量 softmax层完成a_i->exp(a_i)/sum_{j=1}^channel(exp(a_j)
   caffe_copy(bottom[0]->count(), bottom_data, top_data);
   // We need to subtract the max to avoid numerical issues, compute the exp,
   // and then normalize.
